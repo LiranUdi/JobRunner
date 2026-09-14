@@ -1,0 +1,11 @@
+{"id":"success-1","url":"https://http-stat.us/200"}
+{"id":"success-2","url":"https://http-stat.us/204"}
+{"id":"bad-request","url":"https://http-stat.us/400"}
+{"id":"unauthorized","url":"https://http-stat.us/401"}
+{"id":"not-found","url":"https://http-stat.us/404"}
+{"id":"rate-limited","url":"https://http-stat.us/429"}
+{"id":"server-error","url":"https://http-stat.us/500"}
+{"id":"bad-gateway","url":"https://http-stat.us/502"}
+{"id":"unavailable","url":"https://http-stat.us/503"}
+{"id":"gateway-timeout","url":"https://http-stat.us/504"}
+{"id":"slow-success","url":"https://http-stat.us/200?sleep=1"}
