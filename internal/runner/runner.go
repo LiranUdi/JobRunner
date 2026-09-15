@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
+	"context"
 	"jobrunner/internal/jobs"
 )
 
-func Run(cfg Config) error {
+func Run(ctx context.Context, cfg Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func Run(cfg Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			worker(jobsChan, resultsChan, client, cfg.Timeout, cfg.Retries)
+			worker(ctx, jobsChan, resultsChan, client, cfg.Timeout, cfg.Retries)
 		}()
 	}
 

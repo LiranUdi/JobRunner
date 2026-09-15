@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"context"
+	"syscall"
 
 	"jobrunner/internal/runner"
 
@@ -28,7 +31,7 @@ var rootCmd = &cobra.Command{
 			Timeout:  timeout,
 			Retries:  retries,
 		}
-		if err := runner.Run(cfg); err != nil {
+		if err := runner.Run(cmd.Context(), cfg); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -44,7 +47,11 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

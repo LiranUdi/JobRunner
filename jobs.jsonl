@@ -8,4 +8,5 @@
 {"id":"bad-gateway","url":"https://http-stat.us/502"}
 {"id":"unavailable","url":"https://http-stat.us/503"}
 {"id":"gateway-timeout","url":"https://http-stat.us/504"}
-{"id":"slow-success","url":"https://http-stat.us/200?sleep=1"}
+{"id":"slow-success","url":"https://http-stat.us/200?sleep=20"}
+{"id":"slow","url":"https://httpbin.org/delay/30"}

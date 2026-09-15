@@ -8,7 +8,7 @@ import (
 	"jobrunner/internal/jobs"
 )
 
-func worker(jobsChan <-chan jobs.Job, results chan<- jobs.Result, client *http.Client, timeout, retries int) {
+func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.Result, client *http.Client, timeout, retries int) {
 	for job := range jobsChan {
 		var statusCode int
 		var err error
@@ -16,7 +16,7 @@ func worker(jobsChan <-chan jobs.Job, results chan<- jobs.Result, client *http.C
 
 		for i := 0; i < retries; i++ {
 			attempts++
-			statusCode, err = makeRequest(client, timeout, job.URL)
+			statusCode, err = makeRequest(ctx, client, timeout, job.URL)
 			if err == nil {
 				break
 			}
@@ -32,11 +32,11 @@ func worker(jobsChan <-chan jobs.Job, results chan<- jobs.Result, client *http.C
 	}
 }
 
-func makeRequest(client *http.Client, timeout int, url string) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+func makeRequest(ctx context.Context, client *http.Client, timeout int, url string) (int, error) {
+	ctx_timeout, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx_timeout, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
