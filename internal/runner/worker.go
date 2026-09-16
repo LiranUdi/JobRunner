@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -33,6 +34,7 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 }
 
 func makeRequest(ctx context.Context, client *http.Client, timeout int, url string) (int, error) {
+	fmt.Println(time.Duration(timeout) * time.Second)
 	ctx_timeout, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 

@@ -1,12 +1,11 @@
 package runner
 
 import (
+	"context"
 	"fmt"
+	"jobrunner/internal/jobs"
 	"net/http"
 	"sync"
-	"time"
-	"context"
-	"jobrunner/internal/jobs"
 )
 
 func Run(ctx context.Context, cfg Config) error {
@@ -14,7 +13,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 
-	client := &http.Client{Timeout: time.Duration(cfg.Timeout) * time.Second}
+	client := &http.Client{}
 
 	jobList, err := jobs.ReadJSONL(cfg.Filename)
 	if err != nil {
@@ -34,8 +33,13 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 
 	go func() {
+	feedLoop:
 		for _, job := range jobList {
-			jobsChan <- job
+			select {
+			case jobsChan <- job:
+			case <-ctx.Done():
+				break feedLoop
+			}
 		}
 		close(jobsChan)
 	}()
