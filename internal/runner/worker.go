@@ -2,7 +2,8 @@ package runner
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"net"
 	"net/http"
 	"time"
 
@@ -18,7 +19,7 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 		for i := 0; i < retries; i++ {
 			attempts++
 			statusCode, err = makeRequest(ctx, client, timeout, job.URL)
-			if err == nil {
+			if !shouldRetry(statusCode, err) {
 				break
 			}
 		}
@@ -34,7 +35,6 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 }
 
 func makeRequest(ctx context.Context, client *http.Client, timeout int, url string) (int, error) {
-	fmt.Println(time.Duration(timeout) * time.Second)
 	ctx_timeout, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
@@ -50,4 +50,36 @@ func makeRequest(ctx context.Context, client *http.Client, timeout int, url stri
 	defer resp.Body.Close()
 
 	return resp.StatusCode, nil
+}
+
+func shouldRetry(statusCode int, err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	var netErr net.Error
+
+	if errors.As(err, &netErr) {
+		var dnsErr *net.DNSError
+		if errors.As(err, &dnsErr) {
+			return false
+		}
+
+		return true
+	}
+
+	switch {
+	case statusCode >= 200 && statusCode <= 299:
+		return false
+	case statusCode >= 400 && statusCode <= 499:
+		return false
+	case statusCode >= 500 && statusCode <= 599:
+		return true
+	default:
+		return false
+	}
 }
