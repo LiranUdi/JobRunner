@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -16,13 +17,10 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 		var err error
 		attempts := 0
 
-		for i := 0; i < retries; i++ {
+		err = retry(ctx, retries, time.Second, time.Duration(timeout)*time.Second, func() error {
 			attempts++
-			statusCode, err = makeRequest(ctx, client, timeout, job.URL)
-			if !shouldRetry(statusCode, err) {
-				break
-			}
-		}
+			return makeRequest(ctx, client, timeout, job.URL, &statusCode)
+		})
 
 		results <- jobs.Result{
 			ID:         job.ID,
@@ -34,31 +32,22 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 	}
 }
 
-func makeRequest(ctx context.Context, client *http.Client, timeout int, url string) (int, error) {
-	ctx_timeout, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+func makeRequest(ctx context.Context, client *http.Client, timeout int, url string, statusCode *int) error {
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx_timeout, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctxTimeout, "GET", url, nil)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	return resp.StatusCode, nil
-}
-
-func shouldRetry(statusCode int, err error) bool {
 	if errors.Is(err, context.Canceled) {
-		return false
+		return Permanent(err)
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
-		return true
+		return err
 	}
 
 	var netErr net.Error
@@ -66,20 +55,25 @@ func shouldRetry(statusCode int, err error) bool {
 	if errors.As(err, &netErr) {
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) {
-			return false
+			return Permanent(err)
 		}
 
-		return true
+		return err
 	}
 
+	defer resp.Body.Close()
+	*statusCode = resp.StatusCode
+
 	switch {
-	case statusCode >= 200 && statusCode <= 299:
-		return false
-	case statusCode >= 400 && statusCode <= 499:
-		return false
-	case statusCode >= 500 && statusCode <= 599:
-		return true
+	case *statusCode >= 200 && *statusCode <= 299:
+		return nil
+	case *statusCode == 429:
+		return fmt.Errorf("Rate limit exceeded for %s", url)
+	case *statusCode >= 400 && *statusCode <= 499:
+		return Permanent(fmt.Errorf("Failed to handle job for %s due to Status Code: %d", url, *statusCode))
+	case *statusCode >= 500 && *statusCode <= 599:
+		return fmt.Errorf("Failed to handle job for %s due to Status Code: %d", url, *statusCode)
 	default:
-		return false
+		return Permanent(err)
 	}
 }
