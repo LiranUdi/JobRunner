@@ -42,22 +42,25 @@ func makeRequest(ctx context.Context, client *http.Client, timeout int, url stri
 	}
 
 	resp, err := client.Do(req)
-	if errors.Is(err, context.Canceled) {
-		return Permanent(err)
-	}
-
-	if errors.Is(err, context.DeadlineExceeded) {
-		return err
-	}
-
-	var netErr net.Error
-
-	if errors.As(err, &netErr) {
-		var dnsErr *net.DNSError
-		if errors.As(err, &dnsErr) {
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
 			return Permanent(err)
 		}
 
+		if errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+
+		var netErr net.Error
+
+		if errors.As(err, &netErr) {
+			var dnsErr *net.DNSError
+			if errors.As(err, &dnsErr) {
+				return Permanent(err)
+			}
+
+			return err
+		}
 		return err
 	}
 
@@ -74,6 +77,6 @@ func makeRequest(ctx context.Context, client *http.Client, timeout int, url stri
 	case *statusCode >= 500 && *statusCode <= 599:
 		return fmt.Errorf("Failed to handle job for %s due to Status Code: %d", url, *statusCode)
 	default:
-		return Permanent(err)
+		return fmt.Errorf("Unknown Status Code: %d", *statusCode)
 	}
 }
