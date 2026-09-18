@@ -49,14 +49,24 @@ func Run(ctx context.Context, cfg Config) error {
 		close(resultsChan)
 	}()
 
+	var successfulJobs int
+	var failedJobs int
 	for result := range resultsChan {
 		if result.Err != nil {
+			failedJobs++
 			fmt.Printf("Error processing job %s: %v\n", result.ID, result.Err)
 			continue
 		}
+		successfulJobs++
 		fmt.Printf("Result for job %s: %s. StatusCode: %d\n", result.ID, result.URL, result.StatusCode)
 	}
 
-	fmt.Println("All jobs processed successfully")
+	if ctx.Err() != nil {
+		fmt.Printf("\ninterrupted: completed %d/%d jobs\n", successfulJobs, successfulJobs+failedJobs)
+		return nil
+	}
+
+	fmt.Printf("\n[%d/%d] jobs finished successfully!\n", successfulJobs, successfulJobs+failedJobs)
+
 	return nil
 }
