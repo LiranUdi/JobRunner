@@ -33,8 +33,9 @@ func ReadJSONL(filePath string) ([]Job, error) {
 	var jobs []Job
 
 	scanner := bufio.NewScanner(file)
-
+	lineNum := 0
 	for scanner.Scan() {
+		lineNum++
 		line := scanner.Bytes()
 		if len(line) == 0 {
 			continue
@@ -42,7 +43,8 @@ func ReadJSONL(filePath string) ([]Job, error) {
 
 		var job Job
 		if err := json.Unmarshal(line, &job); err != nil {
-			return nil, fmt.Errorf("error unmarshaling line: %w", err)
+			fmt.Fprintf(os.Stderr, "error unmarshaling line: %d | malformed JSON\n", lineNum)
+			continue
 		}
 
 		jobs = append(jobs, job)
