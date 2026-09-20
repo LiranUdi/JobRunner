@@ -28,7 +28,7 @@ func Run(ctx context.Context, cfg Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			worker(ctx, jobsChan, resultsChan, client, cfg.Timeout, cfg.Retries)
+			worker(ctx, jobsChan, resultsChan, client, cfg.Timeout, cfg.MaxAttempts)
 		}()
 	}
 
