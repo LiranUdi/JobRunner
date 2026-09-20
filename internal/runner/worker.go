@@ -22,12 +22,16 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 			return makeRequest(ctx, client, timeout, job.URL, &statusCode)
 		})
 
-		results <- jobs.Result{
+		select {
+		case results <- jobs.Result{
 			ID:         job.ID,
 			URL:        job.URL,
 			StatusCode: statusCode,
 			Attempts:   attempts,
 			Err:        err,
+		}:
+		case <-ctx.Done():
+			return
 		}
 	}
 }
