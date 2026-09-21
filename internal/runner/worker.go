@@ -17,10 +17,12 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 		var err error
 		attempts := 0
 
+		start := time.Now()
 		err = retry(ctx, retries, time.Second, time.Duration(timeout)*time.Second, func() error {
 			attempts++
 			return makeRequest(ctx, client, timeout, job.URL, &statusCode)
 		})
+		duration := time.Since(start)
 
 		select {
 		case results <- jobs.Result{
@@ -29,6 +31,7 @@ func worker(ctx context.Context, jobsChan <-chan jobs.Job, results chan<- jobs.R
 			StatusCode: statusCode,
 			Attempts:   attempts,
 			Err:        err,
+			Duration:   duration,
 		}:
 		case <-ctx.Done():
 			return
