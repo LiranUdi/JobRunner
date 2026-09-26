@@ -2,9 +2,11 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"jobrunner/internal/jobs"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -52,21 +54,38 @@ func Run(ctx context.Context, cfg Config) error {
 	var successfulJobs int
 	var failedJobs int
 	for result := range resultsChan {
+
+		errMsg := ""
 		if result.Err != nil {
 			failedJobs++
-			fmt.Printf("Error processing job %s: %v\n", result.ID, result.Err)
+			errMsg = result.Err.Error()
+		} else {
+			successfulJobs++
+		}
+
+		jsonlResult := jobs.JSONLResult{
+			ID:         result.ID,
+			URL:        result.URL,
+			StatusCode: result.StatusCode,
+			Duration:   result.Duration.String(),
+			Attempts:   result.Attempts,
+			Error:      errMsg,
+		}
+
+		bytes, err := json.Marshal(jsonlResult)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error marshaling result: %v\n", err)
 			continue
 		}
-		successfulJobs++
-		fmt.Printf("Result for job %s: %s. StatusCode: %d\n", result.ID, result.URL, result.StatusCode)
+		fmt.Println(string(bytes))
 	}
 
 	if ctx.Err() != nil {
-		fmt.Printf("\ninterrupted: completed %d/%d jobs\n", successfulJobs, successfulJobs+failedJobs)
+		fmt.Fprintf(os.Stderr, "\ninterrupted: completed [%d/%d] jobs\n", successfulJobs, successfulJobs+failedJobs)
 		return nil
 	}
 
-	fmt.Printf("\n[%d/%d] jobs finished successfully!\n", successfulJobs, successfulJobs+failedJobs)
+	fmt.Fprintf(os.Stderr, "\n[%d/%d] jobs finished successfully!\n", successfulJobs, successfulJobs+failedJobs)
 
 	return nil
 }

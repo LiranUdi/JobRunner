@@ -22,6 +22,15 @@ type Result struct {
 	Err        error
 }
 
+type JSONLResult struct {
+	ID         string `json:"id"`
+	URL        string `json:"url"`
+	StatusCode int    `json:"status_code"`
+	Duration   string `json:"duration"`
+	Attempts   int    `json:"attempts"`
+	Error      string `json:"error,omitempty"`
+}
+
 func ReadJSONL(filePath string) ([]Job, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
